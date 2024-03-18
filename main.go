@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/nats-io/nats.go"
-	"net/http"
 	"os"
 )
 
@@ -27,15 +26,15 @@ func main() {
 		panic(err)
 	}
 
-	_, err = conn.Subscribe("exhibit.created", func(m *nats.Msg) {
-		var data map[string]string
+	_, err = conn.Subscribe("museum.exhibit.created", func(m *nats.Msg) {
+		var data map[string]interface{}
 		err = json.Unmarshal(m.Data, &data)
 		if err != nil {
 			panic(err)
 		}
 
 		// create http get request to museum api
-		apiPath := "/exhibit/" + data["exhibitId"]
+		/*apiPath := "/exhibit/" + data["exhibitId"]
 
 		request, err := http.NewRequest(http.MethodGet, conf.museumHost+apiPath, nil)
 		if err != nil {
@@ -47,7 +46,9 @@ func main() {
 			panic(err)
 		}
 
-		fmt.Println(res.Body)
+		fmt.Println(res.Body)*/
+
+		fmt.Println(data)
 	})
 	if err != nil {
 		panic(err)
