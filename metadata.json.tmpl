@@ -1,0 +1,138 @@
+{
+  "metadata": {
+    "resourcelink": "{{ .ResourceLink }}",
+    "relationships": [
+      {
+        "s": "self",
+        "p": "http://phaidra.org/ontology/isInAdminSet",
+        "o": "phaidra:museum.phaidra.org"
+      }
+    ],
+    "json-ld": {
+      "edm:hasType": [
+        {
+          "@type": "skos:Concept",
+          "skos:exactMatch": [
+            "https:\/\/pid.phaidra.org\/vocabulary\/QTXN-YBJ3"
+          ],
+          "skos:prefLabel": [
+            {
+              "@language": "eng",
+              "@value": "web application"
+            },
+            {
+              "@language": "deu",
+              "@value": "Web-Anwendung"
+            }
+          ]
+        }
+      ],
+      "dce:title": [
+        {
+          "@type": "bf:Title",
+          "bf:mainTitle": [
+            {
+              "@language": "eng",
+              "@value": "{{ .Title }}"
+            }
+          ]
+        }
+      ],
+      "role:aut": [
+        {
+          "@type": "schema:Person",
+          "schema:familyName": [
+            {
+              "@value": "Max"
+            }
+          ],
+          "schema:givenName": [
+            {
+              "@value": "Mustermann"
+            }
+          ]
+        }
+      ],
+      "bf:note": [
+        {
+          "@type": "bf:Summary",
+          "skos:prefLabel": [
+            {
+              "@language": "eng",
+              "@value": "{{ .Description }}"
+            }
+          ]
+        }
+      ],
+      "dce:subject": [
+        {
+          "@type": "skos:Concept",
+          "skos:prefLabel": [
+            {
+              "@language": "deu",
+              "@value": "my keyword 1"
+            }
+          ]
+        },
+        {
+          "@type": "skos:Concept",
+          "skos:prefLabel": [
+            {
+              "@language": "deu",
+              "@value": "my keyword 2"
+            }
+          ]
+        }
+      ],
+      "dcterms:subject": [
+        {
+          "@type": "skos:Concept",
+          "rdfs:label": [
+            {
+              "@language": "deu",
+              "@value": "ÖFOS 2012 -- SOZIALWISSENSCHAFTEN (5) -- Soziologie (504) -- Soziologie (5040) -- Kulturanthropologie (504017)"
+            },
+            {
+              "@language": "eng",
+              "@value": "ÖFOS 2012 -- SOCIAL SCIENCES (5) -- Sociology (504) -- Sociology (5040) -- Cultural anthropology (504017)"
+            }
+          ],
+          "skos:exactMatch": [
+            "oefos2012:504017"
+          ],
+          "skos:notation": [
+            "504017"
+          ],
+          "skos:prefLabel": [
+            {
+              "@language": "deu",
+              "@value": "Kulturanthropologie"
+            },
+            {
+              "@language": "eng",
+              "@value": "Cultural anthropology"
+            }
+          ]
+        }
+      ],
+      "rdax:P00009": [
+        {
+          "@type": "aiiso:Institute",
+          "skos:exactMatch": [
+            "https:\/\/pid.phaidra.org\/univie-org\/8SJ4-3HRY"
+          ],
+          "skos:prefLabel": [
+            {
+              "@language": "deu",
+              "@value": "Institut für Kultur- und Sozialanthropologie"
+            },
+            {
+              "@language": "eng",
+              "@value": "Department of Social and Cultural Anthropology"
+            }
+          ]
+        }
+      ]
+    }
+  }
+}
