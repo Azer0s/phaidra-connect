@@ -4,17 +4,21 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/google/uuid"
 	"github.com/nats-io/nats.go"
-	"io"
-	"mime/multipart"
 	"net/http"
+	"net/url"
 	"os"
-	"path"
+	"strings"
 	"text/template"
 )
 
 var conn *nats.Conn
+
+var fns = template.FuncMap{
+	"minus": func(a, b int) int {
+		return a - b
+	},
+}
 
 type config struct {
 	natsHost        string
@@ -26,10 +30,29 @@ type config struct {
 	template        *template.Template
 }
 
+type PhaidraMetadataAuthor struct {
+	FirstName string
+	LastName  string
+}
+
+type PhaidraMetadataKeywordLang string
+
+const (
+	PhaidraMetadataKeywordLangDE PhaidraMetadataKeywordLang = "deu"
+	PhaidraMetadataKeywordLangEN PhaidraMetadataKeywordLang = "eng"
+)
+
+type PhaidraMetadataKeyword struct {
+	Value string
+	Lang  PhaidraMetadataKeywordLang
+}
+
 type PhaidraMetadata struct {
 	Title        string
 	Description  string
 	ResourceLink string
+	Author       PhaidraMetadataAuthor
+	Keywords     [][]PhaidraMetadataKeyword
 }
 
 func createPhaidraObject(conf config, metadata PhaidraMetadata) error {
@@ -38,61 +61,22 @@ func createPhaidraObject(conf config, metadata PhaidraMetadata) error {
 	// post request to phaidra api (placeholder metadata for now)
 	apiPath := "/api/resource/create"
 
-	// add form file (metadata as json-ld)
-	buf := new(bytes.Buffer)
-	multipartWriter := multipart.NewWriter(buf)
-	defer func(multipartWriter *multipart.Writer) {
-		err := multipartWriter.Close()
-		if err != nil {
-			panic(err)
-		}
-	}(multipartWriter)
-
 	metadataBuf := new(bytes.Buffer)
 	err := conf.template.Execute(metadataBuf, metadata)
 	if err != nil {
 		return err
 	}
 
-	tmpMetadataFile := path.Join(os.TempDir(), uuid.New().String()+".json")
-	defer func() {
-		err := os.Remove(tmpMetadataFile)
-		if err != nil {
-			panic(err)
-		}
-	}()
+	formData := url.Values{
+		"metadata": {metadataBuf.String()},
+	}
 
-	file, err := os.Create(tmpMetadataFile)
+	request, err := http.NewRequest(http.MethodPost, conf.phaidraHost+apiPath, strings.NewReader(formData.Encode()))
 	if err != nil {
 		return err
 	}
 
-	_, err = file.WriteString(metadataBuf.String())
-	if err != nil {
-		return err
-	}
-
-	part, err := multipartWriter.CreateFormFile("metadata", file.Name())
-	if err != nil {
-		return err
-	}
-
-	_, err = file.Seek(0, 0)
-	if err != nil {
-		return err
-	}
-
-	_, err = io.Copy(part, file)
-	if err != nil {
-		return err
-	}
-
-	request, err := http.NewRequest(http.MethodPost, conf.phaidraHost+apiPath, buf)
-	if err != nil {
-		return err
-	}
-
-	request.Header.Set("Content-Type", multipartWriter.FormDataContentType())
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.SetBasicAuth(conf.phaidraUser, conf.phaidraPassword)
 
 	res, err := http.DefaultClient.Do(request)
@@ -106,7 +90,9 @@ func createPhaidraObject(conf config, metadata PhaidraMetadata) error {
 		return err
 	}
 
-	fmt.Println(resBody.String())
+	if res.StatusCode != http.StatusOK {
+		return fmt.Errorf("error creating object in Phaidra: %s", resBody.String())
+	}
 	return nil
 }
 
@@ -115,12 +101,14 @@ func main() {
 		natsHost:        os.Getenv("NATS_HOST"),
 		museumHost:      os.Getenv("MUSEUM_HOST"),
 		phaidraHost:     os.Getenv("PHAIDRA_HOST"),
-		phaidraUser:     os.Getenv("PHAIDRA_USER"),
+		phaidraUser:     os.Getenv("PHAIDRA_USERNAME"),
 		phaidraPassword: os.Getenv("PHAIDRA_PASSWORD"),
 		templateFile:    os.Getenv("TEMPLATE_FILE"),
 	}
 
-	tmpl, err := template.ParseFiles(conf.templateFile)
+	tmpl, err := template.New(conf.templateFile).
+		Funcs(fns).
+		ParseFiles(conf.templateFile)
 	if err != nil {
 		panic(err)
 	}
@@ -131,9 +119,19 @@ func main() {
 		Title:        "Test",
 		Description:  "Test",
 		ResourceLink: "https://sandbox.phaidra.org/objects/1",
+		Author: PhaidraMetadataAuthor{
+			FirstName: "Gustav",
+			LastName:  "Gans",
+		},
+		Keywords: [][]PhaidraMetadataKeyword{
+			{
+				{Value: "Test", Lang: PhaidraMetadataKeywordLangDE},
+				{Value: "Test", Lang: PhaidraMetadataKeywordLangEN},
+			},
+		},
 	})
 	if err != nil {
-		return
+		panic(err)
 	}
 	return
 

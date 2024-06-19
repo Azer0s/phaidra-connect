@@ -43,12 +43,12 @@
           "@type": "schema:Person",
           "schema:familyName": [
             {
-              "@value": "Max"
+              "@value": "{{ .Author.LastName }}"
             }
           ],
           "schema:givenName": [
             {
-              "@value": "Mustermann"
+              "@value": "{{ .Author.FirstName }}"
             }
           ]
         }
@@ -65,24 +65,21 @@
         }
       ],
       "dce:subject": [
+{{$lenKeywords := minus (len .Keywords) 1}}
+{{ range $i, $kw := .Keywords }}
         {
           "@type": "skos:Concept",
           "skos:prefLabel": [
+    {{ $lenLabels := minus (len $kw) 1 }}
+    {{ range $j, $label := $kw }}
             {
-              "@language": "deu",
-              "@value": "my keyword 1"
-            }
+              "@language": "{{ $label.Lang }}",
+              "@value": "{{ $label.Value }}"
+            }{{ if lt $j $lenLabels }},{{ end }}
+    {{ end }}
           ]
-        },
-        {
-          "@type": "skos:Concept",
-          "skos:prefLabel": [
-            {
-              "@language": "deu",
-              "@value": "my keyword 2"
-            }
-          ]
-        }
+        } {{ if lt $i $lenKeywords }},{{ end }}
+{{ end }}
       ],
       "dcterms:subject": [
         {
