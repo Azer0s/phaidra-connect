@@ -1,14 +1,11 @@
 package main
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"github.com/nats-io/nats.go"
-	"net/http"
-	"net/url"
 	"os"
-	"strings"
+	"phaidra-connect/domain"
 	"text/template"
 )
 
@@ -30,72 +27,6 @@ type config struct {
 	template        *template.Template
 }
 
-type PhaidraMetadataAuthor struct {
-	FirstName string
-	LastName  string
-}
-
-type PhaidraMetadataKeywordLang string
-
-const (
-	PhaidraMetadataKeywordLangDE PhaidraMetadataKeywordLang = "deu"
-	PhaidraMetadataKeywordLangEN PhaidraMetadataKeywordLang = "eng"
-)
-
-type PhaidraMetadataKeyword struct {
-	Value string
-	Lang  PhaidraMetadataKeywordLang
-}
-
-type PhaidraMetadata struct {
-	Title        string
-	Description  string
-	ResourceLink string
-	Author       PhaidraMetadataAuthor
-	Keywords     [][]PhaidraMetadataKeyword
-}
-
-func createPhaidraObject(conf config, metadata PhaidraMetadata) error {
-	//curl -X POST -u user:pass "https://sandbox.phaidra.org/api/resource/create" -F "metadata=@resource_metadata.json"
-
-	// post request to phaidra api (placeholder metadata for now)
-	apiPath := "/api/resource/create"
-
-	metadataBuf := new(bytes.Buffer)
-	err := conf.template.Execute(metadataBuf, metadata)
-	if err != nil {
-		return err
-	}
-
-	formData := url.Values{
-		"metadata": {metadataBuf.String()},
-	}
-
-	request, err := http.NewRequest(http.MethodPost, conf.phaidraHost+apiPath, strings.NewReader(formData.Encode()))
-	if err != nil {
-		return err
-	}
-
-	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	request.SetBasicAuth(conf.phaidraUser, conf.phaidraPassword)
-
-	res, err := http.DefaultClient.Do(request)
-	if err != nil {
-		return err
-	}
-
-	resBody := new(bytes.Buffer)
-	_, err = resBody.ReadFrom(res.Body)
-	if err != nil {
-		return err
-	}
-
-	if res.StatusCode != http.StatusOK {
-		return fmt.Errorf("error creating object in Phaidra: %s", resBody.String())
-	}
-	return nil
-}
-
 func main() {
 	conf := config{
 		natsHost:        os.Getenv("NATS_HOST"),
@@ -115,20 +46,22 @@ func main() {
 
 	conf.template = tmpl
 
-	err = createPhaidraObject(conf, PhaidraMetadata{
-		Title:        "Test",
+	err = createPhaidraObject(conf, domain.PhaidraMetadata{
+		Title:        "This was created by museum",
 		Description:  "Test",
 		ResourceLink: "https://sandbox.phaidra.org/objects/1",
-		Author: PhaidraMetadataAuthor{
+		Author: domain.PhaidraMetadataAuthor{
 			FirstName: "Gustav",
 			LastName:  "Gans",
 		},
-		Keywords: [][]PhaidraMetadataKeyword{
+		Keywords: [][]domain.PhaidraMetadataKeyword{
 			{
-				{Value: "Test", Lang: PhaidraMetadataKeywordLangDE},
-				{Value: "Test", Lang: PhaidraMetadataKeywordLangEN},
+				{Value: "Test", Lang: domain.PhaidraMetadataKeywordLangDE},
+				{Value: "Test", Lang: domain.PhaidraMetadataKeywordLangEN},
 			},
 		},
+		OefosId:   "504017",
+		OrgUnitId: "A495",
 	})
 	if err != nil {
 		panic(err)

@@ -85,30 +85,28 @@
         {
           "@type": "skos:Concept",
           "rdfs:label": [
+{{ $lenOefosFullLabel := minus (len .Oefos.FullLabel) 1 }}
+{{ range $i, $label := .Oefos.FullLabel }}
             {
-              "@language": "deu",
-              "@value": "ÖFOS 2012 -- SOZIALWISSENSCHAFTEN (5) -- Soziologie (504) -- Soziologie (5040) -- Kulturanthropologie (504017)"
-            },
-            {
-              "@language": "eng",
-              "@value": "ÖFOS 2012 -- SOCIAL SCIENCES (5) -- Sociology (504) -- Sociology (5040) -- Cultural anthropology (504017)"
-            }
+              "@language": "{{ $label.Lang }}",
+              "@value": "{{ $label.Value }}"
+            }{{ if lt $i $lenOefosFullLabel }},{{ end }}
+ {{ end }}
           ],
           "skos:exactMatch": [
-            "oefos2012:504017"
+            "{{ .Oefos.ExactMatch }}"
           ],
           "skos:notation": [
-            "504017"
+            "{{ .Oefos.Notation }}"
           ],
           "skos:prefLabel": [
+{{ $lenOefosPrefLabel := minus (len .Oefos.PrefLabel) 1 }}
+{{ range $i, $label := .Oefos.PrefLabel }}
             {
-              "@language": "deu",
-              "@value": "Kulturanthropologie"
-            },
-            {
-              "@language": "eng",
-              "@value": "Cultural anthropology"
-            }
+              "@language": "{{ $label.Lang }}",
+              "@value": "{{ $label.Value }}"
+            }{{ if lt $i $lenOefosPrefLabel }},{{ end }}
+{{ end }}
           ]
         }
       ],
@@ -116,17 +114,16 @@
         {
           "@type": "aiiso:Institute",
           "skos:exactMatch": [
-            "https:\/\/pid.phaidra.org\/univie-org\/8SJ4-3HRY"
+            "{{ .OrgUnit.ExactMatch }}"
           ],
           "skos:prefLabel": [
+{{ $lenOrgUnitPrefLabel := minus (len .OrgUnit.FullLabel) 1 }}
+{{ range $i, $label := .OrgUnit.FullLabel }}
             {
-              "@language": "deu",
-              "@value": "Institut für Kultur- und Sozialanthropologie"
-            },
-            {
-              "@language": "eng",
-              "@value": "Department of Social and Cultural Anthropology"
-            }
+              "@language": "{{ $label.Lang }}",
+              "@value": "{{ $label.Value }}"
+            }{{ if lt $i $lenOrgUnitPrefLabel }},{{ end }}
+{{ end }}
           ]
         }
       ]
