@@ -13,8 +13,8 @@ const (
 )
 
 type PhaidraMetadataKeyword struct {
-	Value string
-	Lang  PhaidraMetadataKeywordLang
+	Value string                     `json:"value"`
+	Lang  PhaidraMetadataKeywordLang `json:"lang"`
 }
 
 type PhaidraMetadata struct {

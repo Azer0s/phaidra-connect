@@ -2,8 +2,9 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
+	cloudevents "github.com/cloudevents/sdk-go/v2"
 	"github.com/nats-io/nats.go"
+	"go.uber.org/zap"
 	"os"
 	"phaidra-connect/domain"
 	"text/template"
@@ -25,9 +26,28 @@ type config struct {
 	phaidraPassword string
 	templateFile    string
 	template        *template.Template
+	log             *zap.Logger
 }
 
 func main() {
+	var log *zap.Logger
+	var err error
+	if os.Getenv("RUNTIME_ENV") == "production" {
+		log, err = zap.NewProduction()
+	} else {
+		log, err = zap.NewDevelopment()
+	}
+
+	if err != nil {
+		panic(err)
+	}
+	defer func(log *zap.Logger) {
+		err := log.Sync()
+		if err != nil {
+			panic(err)
+		}
+	}(log)
+
 	conf := config{
 		natsHost:        os.Getenv("NATS_HOST"),
 		museumHost:      os.Getenv("MUSEUM_HOST"),
@@ -35,38 +55,17 @@ func main() {
 		phaidraUser:     os.Getenv("PHAIDRA_USERNAME"),
 		phaidraPassword: os.Getenv("PHAIDRA_PASSWORD"),
 		templateFile:    os.Getenv("TEMPLATE_FILE"),
+		log:             log,
 	}
 
 	tmpl, err := template.New(conf.templateFile).
 		Funcs(fns).
 		ParseFiles(conf.templateFile)
 	if err != nil {
-		panic(err)
+		log.Fatal("error parsing template file", zap.Error(err))
 	}
 
 	conf.template = tmpl
-
-	err = createPhaidraObject(conf, domain.PhaidraMetadata{
-		Title:        "This was created by museum",
-		Description:  "Test",
-		ResourceLink: "https://sandbox.phaidra.org/objects/1",
-		Author: domain.PhaidraMetadataAuthor{
-			FirstName: "Gustav",
-			LastName:  "Gans",
-		},
-		Keywords: [][]domain.PhaidraMetadataKeyword{
-			{
-				{Value: "Test", Lang: domain.PhaidraMetadataKeywordLangDE},
-				{Value: "Test", Lang: domain.PhaidraMetadataKeywordLangEN},
-			},
-		},
-		OefosId:   "504017",
-		OrgUnitId: "A495",
-	})
-	if err != nil {
-		panic(err)
-	}
-	return
 
 	conn, err = nats.Connect(conf.natsHost)
 	if err != nil {
@@ -74,28 +73,50 @@ func main() {
 	}
 
 	_, err = conn.Subscribe("museum.exhibit.created", func(m *nats.Msg) {
-		var data map[string]interface{}
-		err = json.Unmarshal(m.Data, &data)
+		log.Info("received museum.exhibit.created event")
+
+		cloudEvent := new(cloudevents.Event)
+		err = json.Unmarshal(m.Data, &cloudEvent)
 		if err != nil {
-			panic(err)
+			log.Error("error unmarshalling cloud event", zap.Error(err))
+			return
 		}
 
-		// create http get request to museum api
-		/*apiPath := "/exhibit/" + data["exhibitId"]
-
-		request, err := http.NewRequest(http.MethodGet, conf.museumHost+apiPath, nil)
+		data := new(map[string]interface{})
+		err = json.Unmarshal(cloudEvent.Data(), data)
 		if err != nil {
-			panic(err)
+			log.Error("error unmarshalling cloud event data", zap.Error(err))
+			return
 		}
 
-		res, err := http.DefaultClient.Do(request)
+		log.Debug("creating phaidra object", zap.String("exhibitId", (*data)["exhibitId"].(string)))
+
+		exhibit, err := getExhibitById(conf, (*data)["exhibitId"].(string))
 		if err != nil {
-			panic(err)
+			log.Error("error getting exhibit by id", zap.Error(err))
+			return
 		}
 
-		fmt.Println(res.Body)*/
+		meta := domain.PhaidraMetadata{
+			Title:        exhibit.Meta.Title,
+			Description:  exhibit.Meta.Description,
+			ResourceLink: conf.museumHost + "/exhibit/" + (*data)["exhibitId"].(string),
+			Author: domain.PhaidraMetadataAuthor{
+				FirstName: exhibit.Meta.AuthorFirstName,
+				LastName:  exhibit.Meta.AuthorLastName,
+			},
+			Keywords:  exhibit.Meta.Keywords,
+			OefosId:   exhibit.Meta.OefosId,
+			OrgUnitId: exhibit.Meta.OrgUnitId,
+		}
 
-		fmt.Println(data)
+		err = createPhaidraObject(conf, meta)
+		if err != nil {
+			log.Error("error creating phaidra object", zap.Error(err))
+			return
+		}
+
+		log.Info("created phaidra object")
 	})
 	if err != nil {
 		panic(err)

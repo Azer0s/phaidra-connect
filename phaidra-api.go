@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"go.uber.org/zap"
 	"net/http"
 	"net/url"
 	"phaidra-connect/domain"
@@ -11,9 +12,9 @@ import (
 )
 
 func createPhaidraObject(conf config, metadata domain.PhaidraMetadata) error {
-	//curl -X POST -u user:pass "https://sandbox.phaidra.org/api/resource/create" -F "metadata=@resource_metadata.json"
-
 	apiPath := "/api/resource/create"
+
+	conf.log.Debug("creating object in Phaidra", zap.String("apiPath", apiPath))
 
 	hydratedMetadata, err := hydratePhaidraObject(conf, metadata)
 	if err != nil {
@@ -52,11 +53,16 @@ func createPhaidraObject(conf config, metadata domain.PhaidraMetadata) error {
 	if res.StatusCode != http.StatusOK {
 		return fmt.Errorf("error creating object in Phaidra: %s", resBody.String())
 	}
+
+	conf.log.Debug("created object in Phaidra", zap.String("response", resBody.String()), zap.String("apiPath", apiPath))
+
 	return nil
 }
 
 func searchPhaidraOefos(conf config, oefos string) (*domain.PhaidraOefosMetadata, error) {
 	apiPath := "/api/vocabulary?uri=oefos2012"
+
+	conf.log.Debug("retrieving OEFOS from Phaidra", zap.String("oefos", oefos), zap.String("apiPath", apiPath))
 
 	request, err := http.NewRequest(http.MethodGet, conf.phaidraHost+apiPath, nil)
 	if err != nil {
@@ -103,11 +109,15 @@ func searchPhaidraOefos(conf config, oefos string) (*domain.PhaidraOefosMetadata
 		{Value: vocabulary.Labels[domain.PhaidraMetadataKeywordLangEN], Lang: domain.PhaidraMetadataKeywordLangEN},
 	}
 
+	conf.log.Debug("retrieved OEFOS from Phaidra", zap.String("label", enLabel), zap.String("exactMatch", meta.ExactMatch), zap.String("oefos", oefos), zap.String("apiPath", apiPath))
+
 	return meta, nil
 }
 
 func searchPhaidraOrgUnit(conf config, orgUnitId string) (*domain.PhaidraOrgUnitMetadata, error) {
 	apiPath := "/api/directory/org_get_units"
+
+	conf.log.Debug("retrieving org unit from Phaidra", zap.String("orgUnitId", orgUnitId), zap.String("apiPath", apiPath))
 
 	request, err := http.NewRequest(http.MethodGet, conf.phaidraHost+apiPath, nil)
 	if err != nil {
@@ -149,5 +159,6 @@ func searchPhaidraOrgUnit(conf config, orgUnitId string) (*domain.PhaidraOrgUnit
 	}
 	meta.ExactMatch = strings.ReplaceAll(orgUnit.Id, "/", "\\/")
 
+	conf.log.Debug("retrieved org unit from Phaidra", zap.String("label", orgUnit.PrefLabel[domain.PhaidraMetadataKeywordLangEN]), zap.String("exactMatch", meta.ExactMatch), zap.String("orgUnitId", orgUnitId), zap.String("apiPath", apiPath))
 	return meta, nil
 }
